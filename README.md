@@ -30,7 +30,6 @@ BX24.initialize({
 });
 app.get('/token_callback', BX24.tokenCallback, function(req, res){
     res.send('Authorization successful');
-    console.log(BX24.getToken());
     BX24.callMethod('crm.contact.list').then(function(result){
         for(let user of result)
             console.log(user.NAME);
