@@ -227,13 +227,6 @@ exports.callMethod = function(method,params){
     }
 };
 exports.getToken = function(){
-    if(isExpired(token))
-        refreshToken(token)
-            .then(function(refreshedToken){
-                return refreshedToken;
-            })
-            .catch(function(err){
-                throw new Error(err);
-            });
-    else return token;
+    if(isExpired(token)) return refreshToken(token);
+    else return Promise.resolve(token);
 };
