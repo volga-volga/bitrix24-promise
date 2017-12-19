@@ -164,12 +164,18 @@ exports.tokenCallback = function(req, res, next){
             throw new Error(err);
         });
 };
-//TODO: switch to POST request keeping the query string same for passing URI limits
 exports.callMethod = function(method,params){
-    function callRequest(options)
+    function prepareRequest(token)
     {
+        if(params !== null && typeof params !== 'object') params = {};
+        const options = {
+            'url':bitrixUrl+method+'?auth='+token.accessToken,
+            'form':params,
+            'resolveWithFullResponse':true,
+            'simple':false
+        };
         return new Promise(function(resolve, reject){
-            request(options)
+            request.post(options)
                 .then(function(result){
                     try
                     {
@@ -189,42 +195,16 @@ exports.callMethod = function(method,params){
                 .catch(function(err){
                     reject(err);
                 });
-
         });
     }
     if(token === null) throw new Error('Bitrix24 was not properly initialized. Token not found.');
     else if(isExpired(token))
         return refreshToken(token)
-            .then(function(token){
-                if(params)
-                    params.auth = token.accessToken;
-                else
-                    params = {'auth':token.accessToken};
-                const options = {
-                    'url':bitrixUrl+method,
-                    'qs':params,
-                    'resolveWithFullResponse':true,
-                    'simple':false
-                };
-                return callRequest(options);
-            })
+            .then(prepareRequest)
             .catch(function(err){
                 throw new Error(err);
             });
-    else
-    {
-        if(params)
-            params.auth = token.accessToken;
-        else
-            params = {'auth':token.accessToken};
-        const options = {
-            'url':bitrixUrl+method,
-            'qs':params,
-            'resolveWithFullResponse':true,
-            'simple':false
-        };
-        return callRequest(options);
-    }
+    else return prepareRequest(token);
 };
 exports.getToken = function(){
     if(isExpired(token)) return refreshToken(token);
