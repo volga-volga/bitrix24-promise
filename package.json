@@ -1,6 +1,6 @@
 {
   "name": "bitrix24-promise",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Authorize and make bitrix 24 requests with request-promise.",
   "main": "index.js",
   "author": "lol10801lol",
