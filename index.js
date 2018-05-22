@@ -118,31 +118,35 @@ exports.manualAuthURL = function(req, res){
     if (Object.keys(credentials).length === 0) throw new Error('Bitrix24 was not properly initialized before calling auth.');
     else res.redirect(credentials.auth.tokenHost+credentials.auth.authorizePath+'?scope='+scope+'&response_type=code&client_id='+credentials.client.id);
 };
-exports.tokenCallback = function(req, res, next){
-    const options = {
-        'url':credentials.auth.tokenHost+credentials.auth.tokenPath,
-        'qs':{
-            'code':req.query.code,
-            'client_id':credentials.client.id,
-            'client_secret':credentials.client.secret,
-            'grant_type':'authorization_code'
-        }
+exports.authenticate = function()
+{
+    return function(req, res, next){
+        const options = {
+            'url':credentials.auth.tokenHost+credentials.auth.tokenPath,
+            'qs':{
+                'code':req.query.code,
+                'client_id':credentials.client.id,
+                'client_secret':credentials.client.secret,
+                'grant_type':'authorization_code'
+            }
+        };
+        request(options)
+            .then(function(response){
+                let data = JSON.parse(response);
+                let time = new Date();
+                token = {
+                    'accessToken':data.access_token,
+                    'refreshToken':data.refresh_token,
+                    'expiresAt':time.setSeconds(time.getSeconds() + data.expires_in)
+                };
+                next();
+            })
+            .catch(function(err){
+                throw new Error(err);
+            });
     };
-    request(options)
-        .then(function(response){
-            let data = JSON.parse(response);
-            let time = new Date();
-            token = {
-                'accessToken':data.access_token,
-                'refreshToken':data.refresh_token,
-                'expiresAt':time.setSeconds(time.getSeconds() + data.expires_in)
-            };
-            next();
-        })
-        .catch(function(err){
-            throw new Error(err);
-        });
 };
+exports.tokenCallback = exports.authenticate(); //reverse compatibility
 exports.callMethod = function(method,params){
     function prepareRequest(token)
     {

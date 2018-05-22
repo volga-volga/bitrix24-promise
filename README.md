@@ -1,11 +1,11 @@
 # Bitrix24-promise
 
-A Node.js module that provides automatic authorization to a Bitrix24-based CRM system, allowing you to call BX24 REST API methods promisified with a similar syntax, without ever touching the weird window-based official Javascript library.
+A Node.js module that provides automatic authorization to a Bitrix24-based CRM system, allowing you to call BX24 REST API methods using promises with a similar syntax, without ever touching the weird window-based official Javascript library.
 
 ## Usage
 
-Initialize the library by providing the credentials, add a route to listen to the token callback, then call Bitrix methods:
-```
+Initialize the library by providing the credentials, add a route to listen to the oauth token, then call Bitrix methods:
+```javascript
 const express = require('express');
 const app = express();
 const BX24 = require('bitrix24-promise');
@@ -28,7 +28,7 @@ BX24.initialize({
     },
     scope:'crm'
 });
-app.get('/token_callback', BX24.tokenCallback, function(req, res){
+app.get('/bitrix/auth', BX24.authenticate(), function(req, res){
     res.send('Authorization successful');
     BX24.callMethod('crm.contact.list').then(function(result){
         for(let user of result)
@@ -50,7 +50,7 @@ For Bitrix24 API documentation, see https://dev.1c-bitrix.ru/rest_help/index.php
 `BX24.initialize({})`
 
 Set up the library and optionally try to authorize automatically. Return a promise that can contain the token if authorization was automatic, but the recommended way of getting data on initialization is to put the request in token callback.
-```
+```javascript
 url:'https://your-bitrix-portal.bitrix24.ru', //required - base url of your bitrix portal
 credentials:{
     client: {
@@ -82,7 +82,7 @@ Express route that redirects the user to the OAuth site. You can do the redirect
 `BX24.getToken()`
 
 Returns a *token* promise. Calling this method will refresh the token if it is expired.
-```
+```javascript
 {
     accessToken: 'String' //token that can be used to access Bitrix API outside of the callMethod() function
     refreshToken: 'String' //refresh token used internally to refresh the token when it expires
