@@ -40,7 +40,7 @@ app.get('/token_callback', BX24.tokenCallback, function(req, res){
 ## Installation
 
 ```
-npm install --save gitlab:lol10801lol/bitrix24-promise
+npm install bitrix24-promise
 ```
 
 ## Developer Reference

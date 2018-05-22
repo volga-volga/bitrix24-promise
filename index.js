@@ -1,12 +1,8 @@
-/* jshint esversion: 6, node:true */
-/* eslint no-console:false */
-'use strict';
-
-const request = require('request-promise');
-var token = null;
-var bitrixUrl = '';
-var credentials = {};
-var scope = 'crm';
+const request = require('request-promise-native');
+let token = null;
+let bitrixUrl = '';
+let credentials = {};
+let scope = 'crm';
 function isExpired(token){
     return(new Date() > token.expiresAt);
 }
@@ -40,9 +36,7 @@ function refreshToken(token){
                         reject(err);
                     }
                 })
-                .catch(function(err){
-                    reject(err);
-                });
+                .catch(reject);
         });
     }
     else throw new Error('Bitrix24 was not properly initialized. Token not found.');
@@ -50,29 +44,24 @@ function refreshToken(token){
 exports.initialize = function(params){
     return new Promise(function(resolve, reject){
         if(params.url) bitrixUrl = params.url+'/rest/';
-        else reject(new Error('Bitrix24 url not set.'));
-        if(params.credentials.client)
+        else return reject(new Error('Bitrix24 url not set.'));
+        if(params.credentials.client && params.credentials.client.id && params.credentials.client.secret &&
+             params.credentials.auth && params.credentials.auth.tokenHost && params.credentials.auth.tokenPath && params.credentials.auth.authorizePath)
         {
-            credentials.client = {};
-            if(params.credentials.client.id) credentials.client.id = params.credentials.client.id;
-            else reject(new Error('Bitrix24 credentials are not correct.'));
-            if(params.credentials.client.secret) credentials.client.secret = params.credentials.client.secret;
-            else reject(new Error('Bitrix24 credentials are not correct.'));
+            credentials.client = {
+                'id': params.credentials.client.id,
+                'secret': params.credentials.client.secret
+            };
+            credentials.auth = {
+                'tokenHost': params.credentials.auth.tokenHost,
+                'tokenPath': params.credentials.auth.tokenPath,
+                'authorizePath': params.credentials.auth.authorizePath
+            };
         }
-        else reject('Bitrix24 credentials are not correct.');
-        if(params.credentials.auth)
-        {
-            credentials.auth = {};
-            if(params.credentials.auth.tokenHost) credentials.auth.tokenHost = params.credentials.auth.tokenHost;
-            else reject(new Error('Bitrix24 credentials are not correct.'));
-            if(params.credentials.auth.tokenPath) credentials.auth.tokenPath = params.credentials.auth.tokenPath;
-            else reject(new Error('Bitrix24 credentials are not correct.'));
-            if(params.credentials.auth.authorizePath) credentials.auth.authorizePath = params.credentials.auth.authorizePath;
-            else reject(new Error('Bitrix24 credentials are not correct.'));
-        }
-        else reject(new Error('Bitrix24 credentials are not correct.'));
+        else return reject('Bitrix24 credentials are not correct.');
         if(params.scope) scope = params.scope;
-        if(params.credentials.user && params.credentials.user.login && params.credentials.user.password){
+        if(params.credentials.user && params.credentials.user.login && params.credentials.user.password)
+        {
             //Experimental - try to initialize authomatically
             let authJar = request.jar();
             request.post({
@@ -98,41 +87,31 @@ exports.initialize = function(params){
                         'followRedirect':false
                     })
                     .then(function(redirectResponse){
-                        request({
+                        return request({
                             'url':decodeURIComponent(redirectResponse.headers.location.split('redirect_uri=')[1]), //follow a redirect to main site manually to get auth data
                             'jar':authJar,
                             'resolveWithFullResponse':true,
                             'simple':false,
                         })
                         .then(function(authServiceResponse){
-                            request({
+                            return request({
                                 'url':bitrixUrl.split('/rest/')[0]+decodeURIComponent(authServiceResponse.body.substr(51).split('\';</')[0]), //auth with the site using auth data
                                 'jar':authJar,
                                 'resolveWithFullResponse':true,
                                 'simple':false,
                             })
                             .then(function(){ //this is the custom user response and we don't really need it
-                                resolve(token); //token should be available now
-                            })
-                            .catch(function(err){
-                                reject(err);
+                                return resolve(token); //token should be available now
                             });
-                        })
-                        .catch(function(err){
-                            reject(err);
                         });
                     })
-                    .catch(function(err){
-                        reject(err);
-                    });
+                    .catch(reject);
                 }
-                else reject(new Error('Bitrix24 authorization failed, check username/password.'));
+                else return reject(new Error('Bitrix24 authorization failed, check username/password.'));
             })
-            .catch(function(err){
-                reject(err);
-            });
+            .catch(reject);
         }
-        else resolve({'accessToken':null,'refreshToken':null,'expiresAt':null});
+        else return resolve({'accessToken':null,'refreshToken':null,'expiresAt':null});
     });
 };
 exports.manualAuthURL = function(req, res){
@@ -179,9 +158,9 @@ exports.callMethod = function(method,params){
                 .then(function(result){
                     try
                     {
-                        let body = JSON.parse(result.body);
                         if(result.statusCode == 200) 
                         {
+                            let body = JSON.parse(result.body);
                             if(body.error) reject(new Error(body.error));
                             else resolve(body.result);
                         }
@@ -192,18 +171,13 @@ exports.callMethod = function(method,params){
                         reject(err);
                     }
                 })
-                .catch(function(err){
-                    reject(err);
-                });
+                .catch(reject);
         });
     }
     if(token === null) throw new Error('Bitrix24 was not properly initialized. Token not found.');
     else if(isExpired(token))
         return refreshToken(token)
-            .then(prepareRequest)
-            .catch(function(err){
-                throw new Error(err);
-            });
+            .then(prepareRequest);
     else return prepareRequest(token);
 };
 exports.getToken = function(){
