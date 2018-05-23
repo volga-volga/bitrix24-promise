@@ -1,4 +1,5 @@
 const request = require('request-promise-native');
+const qs = require('querystring');
 let token = null;
 let bitrixUrl = '';
 let credentials = {};
@@ -43,7 +44,7 @@ function refreshToken(token){
 }
 exports.initialize = function(params){
     return new Promise(function(resolve, reject){
-        if(params.url) bitrixUrl = params.url+'/rest/';
+        if(params.url) bitrixUrl = params.url;
         else return reject(new Error('Bitrix24 url not set.'));
         if(params.credentials.client && params.credentials.client.id && params.credentials.client.secret &&
              params.credentials.auth && params.credentials.auth.tokenHost && params.credentials.auth.tokenPath && params.credentials.auth.authorizePath)
@@ -80,7 +81,7 @@ exports.initialize = function(params){
                 if(authResponse.statusCode == 302) //302 Moved is bitrix response code for successful auth, we got the PHPSESSID in the bag(or jar in this case)
                 {
                     request({
-                        'url':bitrixUrl.split('/rest/')[0]+'/oauth/authorize/?client_id='+credentials.client.id, //try to authorize client app, following redirect fails to get code from the main site
+                        'url':bitrixUrl+'/oauth/authorize/?client_id='+credentials.client.id, //try to authorize client app, following redirect fails to get code from the main site
                         'jar':authJar,
                         'resolveWithFullResponse':true,
                         'simple':false,
@@ -88,14 +89,14 @@ exports.initialize = function(params){
                     })
                     .then(function(redirectResponse){
                         return request({
-                            'url':decodeURIComponent(redirectResponse.headers.location.split('redirect_uri=')[1]), //follow a redirect to main site manually to get auth data
+                            'url':qs.parse(redirectResponse.headers.location).redirect_uri, //follow a redirect to main site manually to get auth data
                             'jar':authJar,
                             'resolveWithFullResponse':true,
                             'simple':false,
                         })
                         .then(function(authServiceResponse){
                             return request({
-                                'url':bitrixUrl.split('/rest/')[0]+decodeURIComponent(authServiceResponse.body.substr(51).split('\';</')[0]), //auth with the site using auth data
+                                'url':decodeURIComponent(authServiceResponse.body.substring(30).slice(0,-10)), //auth with the site using auth data
                                 'jar':authJar,
                                 'resolveWithFullResponse':true,
                                 'simple':false,
@@ -152,7 +153,7 @@ exports.callMethod = function(method,params){
     {
         if(params !== null && typeof params !== 'object') params = {};
         const options = {
-            'url':bitrixUrl+method+'?auth='+token.accessToken,
+            'url':bitrixUrl+'/rest/'+method+'?auth='+token.accessToken,
             'form':params,
             'resolveWithFullResponse':true,
             'simple':false
